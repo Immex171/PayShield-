@@ -1,0 +1,27 @@
+{
+  "name": "payshield",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private payroll for public blockchains — powered by Fhenix CoFHE",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "contracts:compile": "turbo run compile --filter=@payshield/contracts",
+    "contracts:test": "turbo run test --filter=@payshield/contracts",
+    "contracts:deploy:local": "turbo run deploy:local --filter=@payshield/contracts",
+    "contracts:deploy:testnet": "turbo run deploy:testnet --filter=@payshield/contracts",
+    "web:dev": "turbo run dev --filter=@payshield/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

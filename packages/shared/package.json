@@ -1,0 +1,11 @@
+{
+  "name": "@payshield/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/constants.ts",
+  "types": "./src/constants.ts",
+  "exports": {
+    ".": "./src/constants.ts",
+    "./src/constants": "./src/constants.ts"
+  }
+}
