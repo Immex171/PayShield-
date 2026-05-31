@@ -49,9 +49,11 @@ export function useEncryptPayroll() {
 
         // Encrypt salary client-side via CoFHE
         setEncryptingStep('encrypting');
-        const cofheClient = await getCofheClient();
+        const cofheClient = getCofheClient();
         const rawAmount = BigInt(Math.round(parseFloat(salaryAmount) * 10 ** salaryDecimals));
-        await cofheClient.encrypt_uint128(rawAmount);
+        if (cofheClient) {
+          await cofheClient.encrypt_uint128(rawAmount);
+        }
         const encryptedSalaryBytes = encodeMockSalary(rawAmount);
 
         setEncryptingStep('submitting');
@@ -89,9 +91,11 @@ export function useEncryptPayroll() {
       setEncryptingStep('encrypting');
 
       try {
-        const cofheClient = await getCofheClient();
+        const cofheClient = getCofheClient();
         const rawAmount = BigInt(Math.round(parseFloat(newSalaryAmount) * 10 ** salaryDecimals));
-        const encryptedInput = await cofheClient.encrypt_uint128(rawAmount);
+        if (cofheClient) {
+          await cofheClient.encrypt_uint128(rawAmount);
+        }
         const encryptedSalaryBytes = encodeMockSalary(rawAmount);
 
         setEncryptingStep('submitting');

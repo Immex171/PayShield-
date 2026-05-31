@@ -1,6 +1,6 @@
 'use client';
 
-import { Address, formatUnits } from 'viem';
+import { Address } from 'viem';
 import { useClaimSalary } from '../../hooks/useClaimSalary';
 import { useWorkerPayroll } from '../../hooks/useWorkerPayroll';
 
@@ -10,7 +10,7 @@ interface WorkerClaimCardProps {
 
 export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
   const { claimSalary, isPending, claimStep, isSuccess, error, reset } = useClaimSalary(payrollAddress);
-  const { isWorker, workerInfo, isLoading } = useWorkerPayroll(payrollAddress);
+  const { isWorker, workerRecord, isLoading } = useWorkerPayroll(payrollAddress);
 
   if (isLoading) {
     return (
@@ -33,7 +33,9 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
     );
   }
 
-  const info = workerInfo as any;
+  const isActive = workerRecord?.status === 1;
+  const lastClaimTime = workerRecord?.lastClaimedAt ?? 0n;
+  const claimCount = workerRecord?.claimCount ?? 0n;
 
   if (isSuccess) {
     return (
@@ -58,8 +60,8 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
     <div className="glass rounded-xl p-6 space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-white">Your Payroll</h3>
-        <span className={info?.isActive ? 'badge-active' : 'badge-warning'}>
-          {info?.isActive ? 'Active' : 'Inactive'}
+        <span className={isActive ? 'badge-active' : 'badge-warning'}>
+          {isActive ? 'Active' : 'Inactive'}
         </span>
       </div>
 
@@ -69,16 +71,14 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
           <span className="salary-redacted encrypted-pulse text-lg font-mono">●●●●●</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-white/40 uppercase tracking-wider">Total Claimed</span>
-          <span className="font-mono text-white">
-            {info?.claimedAmount ? `$${formatUnits(info.claimedAmount as bigint, 6)}` : '$0.00'}
-          </span>
+          <span className="text-xs text-white/40 uppercase tracking-wider">Claims Made</span>
+          <span className="font-mono text-white">{claimCount.toString()}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-white/40 uppercase tracking-wider">Last Claim</span>
           <span className="text-sm text-white/60">
-            {info?.lastClaimTime && info.lastClaimTime > 0n
-              ? new Date(Number(info.lastClaimTime) * 1000).toLocaleDateString()
+            {lastClaimTime > 0n
+              ? new Date(Number(lastClaimTime) * 1000).toLocaleDateString()
               : 'Never'}
           </span>
         </div>
@@ -106,7 +106,7 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
 
       <button
         onClick={claimSalary}
-        disabled={isPending || !info?.isActive}
+        disabled={isPending || !isActive}
         className="btn-primary w-full"
       >
         {isPending ? (
@@ -119,7 +119,7 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
         )}
       </button>
 
-      {!info?.isActive && (
+      {!isActive && (
         <p className="text-xs text-center text-white/30">
           Your worker status is currently inactive. Contact your employer.
         </p>

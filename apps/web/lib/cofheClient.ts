@@ -15,7 +15,14 @@
  *     user-specific sealing keys
  */
 
-let cofheClientInstance: unknown = null;
+interface CofheClientLike {
+  encrypt_uint128: (value: bigint) => Promise<{ ctHash: bigint; securityZone: number }>;
+  unseal: (ciphertext: `0x${string}`, permission: unknown) => Promise<bigint>;
+  generatePermission: () => Promise<{ sealingKey: `0x${string}` }>;
+  isMock?: boolean;
+}
+
+let cofheClientInstance: CofheClientLike | null = null;
 let isInitialized = false;
 let isMockMode = false;
 
@@ -32,7 +39,8 @@ export async function initCofheClient(
 ): Promise<void> {
   if (isInitialized) return;
 
-  const isLocalMock = chainId === 412346 || chainId === 31337;
+  const isLocalMock =
+    chainId === 412346 || chainId === 31337 || chainId === 421614;
 
   if (isLocalMock) {
     // Mock mode: CoFHE operations are simulated locally
@@ -45,10 +53,10 @@ export async function initCofheClient(
 
   try {
     // Production mode: initialize real CoFHE client
-    // @ts-ignore — @cofhe/sdk API may differ by version; mock fallback handles failures
     const { createCofheClient, createCofheConfig } = await import("@cofhe/sdk/web");
+    // @ts-expect-error CoFHE SDK config API varies by version; mock fallback on failure
     const config = createCofheConfig({ chainId });
-    cofheClientInstance = createCofheClient(config);
+    cofheClientInstance = createCofheClient(config) as unknown as CofheClientLike;
     isInitialized = true;
     console.info("[PayShield] CoFHE client initialized for Fhenix network");
   } catch (err) {
@@ -59,7 +67,7 @@ export async function initCofheClient(
   }
 }
 
-export function getCofheClient(): unknown {
+export function getCofheClient(): CofheClientLike | null {
   return cofheClientInstance;
 }
 
@@ -75,10 +83,7 @@ export function resetCofheClient(): void {
 
 // ─── Mock CoFHE Client ────────────────────────────────────────────────────
 
-interface MockCofheClient {
-  encrypt_uint128: (value: bigint) => Promise<{ ctHash: bigint; securityZone: number }>;
-  unseal: (ciphertext: `0x${string}`, permission: unknown) => Promise<bigint>;
-  generatePermission: () => Promise<{ sealingKey: `0x${string}` }>;
+interface MockCofheClient extends CofheClientLike {
   isMock: true;
 }
 
@@ -93,15 +98,10 @@ function createMockCofheClient(): MockCofheClient {
     },
 
     async unseal(ciphertext: `0x${string}`) {
-      // Mock "decryption": decode the ABI-encoded value
       try {
-        const { ethers } = await import("ethers");
-        // The mock sealed output is just the ABI-encoded plaintext
-        const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-          ["uint128"],
-          ciphertext
-        );
-        return BigInt(decoded[0]);
+        const { decodeAbiParameters } = await import("viem");
+        const decoded = decodeAbiParameters([{ type: "uint128" }], ciphertext);
+        return BigInt(decoded[0] as bigint);
       } catch {
         return 0n;
       }
