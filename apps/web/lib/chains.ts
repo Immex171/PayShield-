@@ -31,7 +31,12 @@ export const fhenixHelium = defineChain({
   name: "Fhenix Helium",
   nativeCurrency: { name: "tFHE", symbol: "tFHE", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://api.helium.fhenix.zone"] },
+    default: {
+      http: [
+        process.env.FHENIX_TESTNET_RPC_URL || "https://get-helium.fhenix.zone",
+        "https://api.helium.fhenix.zone",
+      ],
+    },
   },
   blockExplorers: {
     default: {

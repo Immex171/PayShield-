@@ -85,6 +85,7 @@ NEXT_PUBLIC_MOCK_USDC_ADDRESS=${mockUSDCAddr}
 NEXT_PUBLIC_ACCESS_MANAGER_ADDRESS=${accessManagerAddr}
 NEXT_PUBLIC_CHAIN_ID=${network.chainId}
 NEXT_PUBLIC_RPC_URL=${process.env.NEXT_PUBLIC_RPC_URL || (network.chainId === 412346n ? "http://127.0.0.1:42069" : network.chainId === 31337n ? "http://127.0.0.1:8545" : network.chainId === 421614n ? "https://sepolia-rollup.arbitrum.io/rpc" : "https://api.helium.fhenix.zone")}
+COFHE_GATEWAY_URL=${process.env.COFHE_GATEWAY_URL || "https://gateway.helium.fhenix.zone"}
 `;
   fs.writeFileSync(path.join(artifactsDir, "env-snippet.txt"), envSnippet);
 

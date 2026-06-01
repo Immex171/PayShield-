@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useWaitForTransactionReceipt, useAccount, useChainId } from 'wagmi';
-import { Address, encodeAbiParameters, encodePacked, keccak256, parseAbiParameters } from 'viem';
-import { PAYSHIELD_PAYROLL_ABI, addWorkerWithEncryptedSalary } from '@payshield/sdk';
+import { useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { Address, encodePacked, keccak256 } from 'viem';
+import { PAYSHIELD_PAYROLL_ABI, encryptSalaryAmount } from '@payshield/sdk';
 import { getCofheClient } from '../lib/cofheClient';
 import { useEnsureChain } from './useEnsureChain';
 import { useBufferedWriteContract } from './useBufferedWriteContract';
@@ -13,13 +13,12 @@ export interface AddWorkerParams {
   payrollAddress: Address;
   workerAddress: Address;
   employeeId: string;
-  salaryAmount: string; // human-readable, e.g. "5000"
+  salaryAmount: string;
   salaryDecimals?: number;
 }
 
 export function useEncryptPayroll() {
   const { address: userAddress } = useAccount();
-  const chainId = useChainId();
   const { writeContractAsync } = useBufferedWriteContract();
   const { ensureChain } = useEnsureChain();
   const [isPending, setIsPending] = useState(false);
@@ -30,6 +29,13 @@ export function useEncryptPayroll() {
   const [error, setError] = useState<string | null>(null);
 
   const { isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+
+  const encryptSalary = useCallback(async (salaryAmount: string, salaryDecimals = 6) => {
+    const rawAmount = BigInt(Math.round(parseFloat(salaryAmount) * 10 ** salaryDecimals));
+    const cofheClient = getCofheClient();
+    const { encoded } = await encryptSalaryAmount(rawAmount, cofheClient ?? undefined);
+    return encoded;
+  }, []);
 
   const addWorker = useCallback(
     async ({ payrollAddress, workerAddress, employeeId, salaryAmount, salaryDecimals = 6 }: AddWorkerParams) => {
@@ -42,19 +48,11 @@ export function useEncryptPayroll() {
       setEncryptingStep('encrypting');
 
       try {
-        // Derive employee ID hash (never store plaintext on-chain)
         const employeeIdHash = keccak256(
           encodePacked(['string', 'address'], [employeeId, workerAddress])
         );
 
-        // Encrypt salary client-side via CoFHE
-        setEncryptingStep('encrypting');
-        const cofheClient = getCofheClient();
-        const rawAmount = BigInt(Math.round(parseFloat(salaryAmount) * 10 ** salaryDecimals));
-        if (cofheClient) {
-          await cofheClient.encrypt_uint128(rawAmount);
-        }
-        const encryptedSalaryBytes = encodeMockSalary(rawAmount);
+        const encryptedSalaryBytes = await encryptSalary(salaryAmount, salaryDecimals);
 
         setEncryptingStep('submitting');
         await ensureChain();
@@ -77,7 +75,7 @@ export function useEncryptPayroll() {
         setIsPending(false);
       }
     },
-    [userAddress, writeContractAsync, ensureChain]
+    [userAddress, writeContractAsync, ensureChain, encryptSalary]
   );
 
   const updateSalary = useCallback(
@@ -91,12 +89,7 @@ export function useEncryptPayroll() {
       setEncryptingStep('encrypting');
 
       try {
-        const cofheClient = getCofheClient();
-        const rawAmount = BigInt(Math.round(parseFloat(newSalaryAmount) * 10 ** salaryDecimals));
-        if (cofheClient) {
-          await cofheClient.encrypt_uint128(rawAmount);
-        }
-        const encryptedSalaryBytes = encodeMockSalary(rawAmount);
+        const encryptedSalaryBytes = await encryptSalary(newSalaryAmount, salaryDecimals);
 
         setEncryptingStep('submitting');
         await ensureChain();
@@ -118,7 +111,7 @@ export function useEncryptPayroll() {
         setIsPending(false);
       }
     },
-    [userAddress, writeContractAsync, ensureChain]
+    [userAddress, writeContractAsync, ensureChain, encryptSalary]
   );
 
   const reset = useCallback(() => {
@@ -138,11 +131,4 @@ export function useEncryptPayroll() {
     error,
     reset,
   };
-}
-
-/**
- * Legacy mock encoding accepted by PayShieldPayroll._toEncryptedSalary on local Hardhat.
- */
-function encodeMockSalary(amount: bigint): `0x${string}` {
-  return encodeAbiParameters(parseAbiParameters('uint256, uint8'), [amount, 0]);
 }

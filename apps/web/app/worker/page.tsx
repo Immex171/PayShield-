@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { Address } from 'viem';
 import { WorkerClaimCard } from '../../components/worker/WorkerClaimCard';
+import { StealthPayoutCard } from '../../components/worker/StealthPayoutCard';
 import { PrivateSalaryView } from '../../components/worker/PrivateSalaryView';
 import { WalletConnectButton } from '../../components/shared/WalletConnectButton';
 
@@ -100,6 +101,7 @@ export default function WorkerDashboard() {
             </div>
 
             <PrivateSalaryView payrollAddress={payrollAddress} />
+            <StealthPayoutCard payrollAddress={payrollAddress} />
             <WorkerClaimCard payrollAddress={payrollAddress} />
           </div>
         )}

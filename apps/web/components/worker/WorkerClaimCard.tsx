@@ -3,14 +3,18 @@
 import { Address } from 'viem';
 import { useClaimSalary } from '../../hooks/useClaimSalary';
 import { useWorkerPayroll } from '../../hooks/useWorkerPayroll';
+import { usePayPeriod } from '../../hooks/usePayPeriod';
+import { useAccount } from 'wagmi';
 
 interface WorkerClaimCardProps {
   payrollAddress: Address;
 }
 
 export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
+  const { address } = useAccount();
   const { claimSalary, isPending, claimStep, isSuccess, error, reset } = useClaimSalary(payrollAddress);
   const { isWorker, workerRecord, isLoading } = useWorkerPayroll(payrollAddress);
+  const { currentPeriodId, hasClaimedCurrentPeriod } = usePayPeriod(payrollAddress, address);
 
   if (isLoading) {
     return (
@@ -71,7 +75,19 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
           <span className="salary-redacted encrypted-pulse text-lg font-mono">●●●●●</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-white/40 uppercase tracking-wider">Claims Made</span>
+          <span className="text-xs text-white/40 uppercase tracking-wider">Pay Period</span>
+          <span className="font-mono text-white">
+            {currentPeriodId !== undefined ? `#${currentPeriodId.toString()}` : '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-white/40 uppercase tracking-wider">Period Status</span>
+          <span className={`text-sm ${hasClaimedCurrentPeriod ? 'text-white/40' : 'text-emerald-400'}`}>
+            {hasClaimedCurrentPeriod ? 'Already claimed' : 'Available to claim'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-white/40 uppercase tracking-wider">Total Claims</span>
           <span className="font-mono text-white">{claimCount.toString()}</span>
         </div>
         <div className="flex items-center justify-between">
@@ -93,6 +109,7 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
         <div className="text-xs text-cyan-400 flex items-center gap-2">
           <div className="w-3 h-3 border border-t-cyan-400 border-white/20 rounded-full animate-spin" />
           {claimStep === 'preparing' && 'Preparing claim...'}
+          {claimStep === 'decrypting' && 'Waiting for FHE decryption (retrying)...'}
           {claimStep === 'signing' && 'Sign transaction in wallet...'}
           {claimStep === 'confirming' && 'Waiting for confirmation...'}
         </div>
@@ -106,7 +123,7 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
 
       <button
         onClick={claimSalary}
-        disabled={isPending || !isActive}
+        disabled={isPending || !isActive || hasClaimedCurrentPeriod}
         className="btn-primary w-full"
       >
         {isPending ? (
@@ -114,6 +131,8 @@ export function WorkerClaimCard({ payrollAddress }: WorkerClaimCardProps) {
             <span className="w-4 h-4 border border-t-white border-white/30 rounded-full animate-spin" />
             Processing Claim...
           </span>
+        ) : hasClaimedCurrentPeriod ? (
+          'Already Claimed This Period'
         ) : (
           'Claim Monthly Salary'
         )}

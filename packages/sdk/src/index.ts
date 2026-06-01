@@ -231,14 +231,10 @@ export async function decryptWorkerSalary(params: {
     return await params.cofheClient.unseal(sealedBytes as `0x${string}`, params.permission);
   } else {
     // Mock mode: the sealed bytes directly encode the plaintext
-    // (mock FHE doesn't actually encrypt — for local testing only)
-    const { ethers } = await import("ethers");
+    const { decodeAbiParameters } = await import("viem");
     try {
-      const decoded = ethers.AbiCoder.defaultAbiCoder().decode(
-        ["uint128"],
-        sealedBytes as string
-      );
-      return BigInt(decoded[0]);
+      const [decoded] = decodeAbiParameters([{ type: "uint128" }], sealedBytes as `0x${string}`);
+      return BigInt(decoded);
     } catch {
       return 0n;
     }

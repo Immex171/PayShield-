@@ -85,4 +85,19 @@ library PayrollEvents {
         bool isPaused,
         uint256 timestamp
     );
+
+    /// @notice Emitted when the company admin advances to a new pay period
+    event PeriodAdvanced(
+        address indexed payroll,
+        uint256 indexed periodId,
+        uint256 timestamp
+    );
+
+    /// @notice Emitted when a worker sets a custom payout (stealth) address
+    event PayoutAddressSet(
+        address indexed payroll,
+        address indexed worker,
+        address indexed payoutAddress,
+        uint256 timestamp
+    );
 }

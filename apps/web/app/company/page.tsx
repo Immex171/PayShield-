@@ -8,6 +8,7 @@ import { AddEmployeeForm } from '../../components/company/AddEmployeeForm';
 import { FundPayrollCard } from '../../components/company/FundPayrollCard';
 import { PayrollTable } from '../../components/company/PayrollTable';
 import { AuditorAccessCard } from '../../components/auditor/AuditorAccessCard';
+import { PayPeriodCard } from '../../components/company/PayPeriodCard';
 import { StatCard } from '../../components/shared/StatCard';
 import { EmptyState } from '../../components/shared/EmptyState';
 import { WalletConnectButton } from '../../components/shared/WalletConnectButton';
@@ -137,6 +138,8 @@ export default function CompanyDashboard() {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            <PayPeriodCard payrollAddress={companyPayrollAddress} />
+
             <div className="glass rounded-xl p-6">
               <h3 className="font-semibold text-white mb-4">Contract Info</h3>
               <div className="space-y-3 text-sm">

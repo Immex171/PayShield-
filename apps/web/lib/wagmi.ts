@@ -29,7 +29,11 @@ export const wagmiConfig = createConfig({
     [fhenixLocalNode.id]: http(
       process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:42069"
     ),
-    [fhenixHelium.id]: http("https://api.helium.fhenix.zone"),
+    [fhenixHelium.id]: http(
+      process.env.FHENIX_TESTNET_RPC_URL ||
+        process.env.NEXT_PUBLIC_RPC_URL ||
+        "https://get-helium.fhenix.zone"
+    ),
     [arbitrumSepolia.id]: http(getArbitrumSepoliaRpcUrl()),
   },
 });

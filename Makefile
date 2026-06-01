@@ -38,7 +38,14 @@ deploy-arbitrum-sepolia:
 	cp packages/contracts/deployments/env-snippet.txt apps/web/.env.local
 	@echo ""
 	@echo "✓ Deployed to Arbitrum Sepolia"
-	@echo "✓ apps/web/.env.local updated"
+	@echo "✓ apps/web/.env.local updated (run make setup-arbitrum-sepolia for demo payroll)"
+
+setup-arbitrum-sepolia:
+	cd packages/contracts && npx hardhat run scripts/setupIntegration.ts --network arbitrumSepolia
+
+deploy-arbitrum-sepolia-full: deploy-arbitrum-sepolia setup-arbitrum-sepolia
+	@echo ""
+	@echo "✓ Deployed + integrated on Arbitrum Sepolia"
 
 seed:
 	cd packages/contracts && npx hardhat run scripts/seedDemoPayroll.ts --network localfhenix
@@ -47,7 +54,13 @@ setup-integration:
 	cd packages/contracts && npx hardhat run scripts/setupIntegration.ts --network localhost
 
 seed-testnet:
-	cd packages/contracts && npx hardhat run scripts/seedDemoPayroll.ts --network fhenixHelium
+	cd packages/contracts && npx hardhat run scripts/seedDemoPayroll.ts --network fhenixTestnet
+
+deploy-testnet-full: deploy-testnet seed-testnet
+	cp packages/contracts/deployments/env-snippet.txt apps/web/.env.local
+	@echo ""
+	@echo "✓ Deployed + seeded on Fhenix Helium"
+	@echo "✓ apps/web/.env.local updated — set NEXT_PUBLIC_CHAIN_ID=8008135"
 
 # ─── Full local demo setup ───────────────────────────────────────────────────
 
@@ -92,6 +105,7 @@ help:
 	@echo "  make compile        Compile Solidity contracts"
 	@echo "  make deploy-local   Deploy to local Fhenix node"
 	@echo "  make deploy-testnet Deploy to Fhenix Helium testnet"
+	@echo "  make deploy-testnet-full Deploy + seed on Fhenix Helium + update .env.local"
 	@echo "  make deploy-arbitrum-sepolia Deploy to Arbitrum Sepolia + update .env.local"
 	@echo "  make seed           Seed demo payroll (local)"
 	@echo "  make build          Build all packages"

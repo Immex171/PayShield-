@@ -43,9 +43,9 @@ const config: HardhatUserConfig = {
     },
     // Fhenix Helium testnet
     fhenixTestnet: {
-      url: process.env.FHENIX_TESTNET_RPC_URL || "https://api.helium.fhenix.zone",
+      url: process.env.FHENIX_TESTNET_RPC_URL || "https://get-helium.fhenix.zone",
       chainId: 8008135,
-      accounts: [DEPLOYER_KEY],
+      accounts: [DEPLOYER_KEY, COMPANY_KEY, WORKER_KEY, AUDITOR_KEY],
       gas: "auto",
       gasPrice: "auto",
     },

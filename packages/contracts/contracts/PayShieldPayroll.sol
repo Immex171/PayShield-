@@ -70,6 +70,15 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
     /// @dev Simple period counter — incremented by admin to start new pay period
     uint256 public currentPeriodId;
 
+    /// @dev Timestamp when the current pay period started
+    uint256 public periodStartedAt;
+
+    /// @dev Tracks pending decrypt requests per worker for async CoFHE claim flow
+    mapping(address => bool) private _decryptPending;
+
+    /// @dev Optional custom payout address per worker (stealth address support)
+    mapping(address => address) private _customPayoutAddresses;
+
     bool private _initialized;
 
     // ─── Constructor ─────────────────────────────────────────────────
@@ -96,6 +105,7 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
         _accessManager = PayShieldAccessManager(accessManager_);
         _initialized = true;
         currentPeriodId = 1;
+        periodStartedAt = block.timestamp;
     }
 
     // ─── Modifiers ────────────────────────────────────────────────────
@@ -222,7 +232,23 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
 
     // ─── IPayShieldPayroll: Claim Flow ────────────────────────────────
 
-    /// @notice Worker claims their salary for the current period
+    /// @notice Request threshold decryption of the caller's salary (step 1 of claim)
+    /// @dev On Fhenix Helium, decryption is async — call this first, wait, then claimSalary()
+    function prepareClaimDecrypt() external onlyActiveWorker initialized whenNotPaused {
+        address worker = msg.sender;
+        if (_claimed[worker][currentPeriodId]) {
+            revert PayrollErrors.AlreadyClaimed(worker, currentPeriodId);
+        }
+
+        euint128 encSalary = _encryptedSalaries[worker];
+        ITaskManager(TASK_MANAGER_ADDRESS).createDecryptTask(
+            uint256(euint128.unwrap(encSalary)),
+            worker
+        );
+        _decryptPending[worker] = true;
+    }
+
+    /// @notice Worker claims their salary for the current period (step 2 of claim)
     /// @dev Decrypts the euint128 within the FHE environment to obtain the
     ///      plaintext amount, then instructs the vault to release that amount.
     ///
@@ -247,13 +273,15 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
 
         euint128 encSalary = _encryptedSalaries[worker];
 
-        // ── CoFHE: Decrypt salary inside FHE computation ──
-        // Request threshold decryption via the CoFHE task manager, then read the result.
-        // On testnet this may require a follow-up transaction once decryption completes.
-        ITaskManager(TASK_MANAGER_ADDRESS).createDecryptTask(
-            uint256(euint128.unwrap(encSalary)),
-            worker
-        );
+        // Ensure decrypt task exists (auto-request if worker skipped prepareClaimDecrypt)
+        if (!_decryptPending[worker]) {
+            ITaskManager(TASK_MANAGER_ADDRESS).createDecryptTask(
+                uint256(euint128.unwrap(encSalary)),
+                worker
+            );
+            _decryptPending[worker] = true;
+        }
+
         (uint128 salaryAmount, bool ready) = FHE.getDecryptResultSafe(encSalary);
         if (!ready) revert PayrollErrors.DecryptionNotReady();
 
@@ -267,11 +295,14 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
 
         // Mark claimed before external call (CEI pattern)
         _claimed[worker][currentPeriodId] = true;
+        _decryptPending[worker] = false;
         _workers[worker].lastClaimedAt = block.timestamp;
         _workers[worker].claimCount += 1;
 
-        // Release salary from vault to worker
-        _vault.releaseSalary(worker, uint256(salaryAmount));
+        // Release salary — use stealth/custom payout address if set
+        address recipient = _customPayoutAddresses[worker];
+        if (recipient == address(0)) recipient = worker;
+        _vault.releaseSalary(recipient, uint256(salaryAmount));
 
         emit PayrollEvents.SalaryClaimed(
             address(this),
@@ -285,7 +316,30 @@ contract PayShieldPayroll is IPayShieldPayroll, ReentrancyGuard, Pausable {
 
     /// @notice Advance to the next pay period
     function advancePeriod() external onlyCompanyAdmin {
+        emit PayrollEvents.PeriodAdvanced(address(this), currentPeriodId, block.timestamp);
         currentPeriodId += 1;
+        periodStartedAt = block.timestamp;
+    }
+
+    // ─── Worker: Stealth Payout Address ─────────────────────────────
+
+    /// @notice Set a custom payout address for salary claims (stealth address support).
+    ///         If unset, salary is sent to msg.sender (the worker wallet).
+    function setPayoutAddress(address payoutAddress) external onlyActiveWorker {
+        if (payoutAddress == address(0)) revert PayrollErrors.InvalidWorkerAddress();
+        _customPayoutAddresses[msg.sender] = payoutAddress;
+        emit PayrollEvents.PayoutAddressSet(
+            address(this),
+            msg.sender,
+            payoutAddress,
+            block.timestamp
+        );
+    }
+
+    /// @notice Get the effective payout address for a worker
+    function getPayoutAddress(address worker) external view returns (address) {
+        address custom = _customPayoutAddresses[worker];
+        return custom != address(0) ? custom : worker;
     }
 
     // ─── IPayShieldPayroll: Access Control ───────────────────────────

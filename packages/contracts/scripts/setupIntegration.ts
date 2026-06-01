@@ -107,8 +107,9 @@ NEXT_PUBLIC_PAYSHIELD_FACTORY_ADDRESS=${factoryAddr}
 NEXT_PUBLIC_MOCK_USDC_ADDRESS=${usdcAddr}
 NEXT_PUBLIC_ACCESS_MANAGER_ADDRESS=${deployment.contracts.PayShieldAccessManager}
 NEXT_PUBLIC_DEMO_PAYROLL_ADDRESS=${payrollAddr}
-NEXT_PUBLIC_CHAIN_ID=31337
-NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8545
+NEXT_PUBLIC_CHAIN_ID=${deployment.chainId}
+NEXT_PUBLIC_RPC_URL=${process.env.NEXT_PUBLIC_RPC_URL || (deployment.chainId === "421614" ? "https://sepolia-rollup.arbitrum.io/rpc" : deployment.chainId === "8008135" ? "https://get-helium.fhenix.zone" : "http://127.0.0.1:8545")}
+COFHE_GATEWAY_URL=${process.env.COFHE_GATEWAY_URL || "https://gateway.helium.fhenix.zone"}
 `;
 
   fs.writeFileSync(path.join(path.dirname(deploymentPath), "env-snippet.txt"), envSnippet);
